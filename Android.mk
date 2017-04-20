@@ -19,10 +19,11 @@ LOCAL_PATH := $(call my-dir)
 aidl_cflags := -Wall -Wextra -Werror
 aidl_static_libraries := libbase libcutils
 
-aidl_module_host_os := darwin linux windows
+aidl_module_host_os :=  linux 
 ifdef BRILLO
-  aidl_module_host_os := darwin linux
+  aidl_module_host_os :=  linux
 endif
+
 
 # Logic shared between aidl and its unittests
 include $(CLEAR_VARS)
@@ -41,6 +42,7 @@ LOCAL_CLANG_CFLAGS += -Wno-deprecated-register
 # yacc also has a habit of using char* over const char*.
 LOCAL_CLANG_CFLAGS += -Wno-writable-strings
 LOCAL_STATIC_LIBRARIES := $(aidl_static_libraries)
+
 
 LOCAL_SRC_FILES := \
     aidl.cpp \
@@ -68,6 +70,11 @@ include $(BUILD_HOST_STATIC_LIBRARY)
 include $(CLEAR_VARS)
 LOCAL_MODULE := aidl
 
+LOCAL_MODULE_STEM_32 := aidl
+LOCAL_MODULE_STEM_64 := aidl64
+LOCAL_MODULE_PATH_32 := $(ANDROID_PRODUCT_OUT)/system/bin
+LOCAL_MODULE_PATH_64 := $(ANDROID_PRODUCT_OUT)/system/bin
+LOCAL_MULTILIB := both
 LOCAL_MODULE_HOST_OS := $(aidl_module_host_os)
 LOCAL_CFLAGS := $(aidl_cflags)
 LOCAL_C_INCLUDES := external/gtest/include
@@ -79,6 +86,11 @@ include $(BUILD_HOST_EXECUTABLE)
 include $(CLEAR_VARS)
 LOCAL_MODULE := aidl-cpp
 
+LOCAL_MODULE_STEM_32 := aidl-cpp
+LOCAL_MODULE_STEM_64 := aidl-cpp64
+LOCAL_MODULE_PATH_32 := $(ANDROID_PRODUCT_OUT)/system/bin
+LOCAL_MODULE_PATH_64 := $(ANDROID_PRODUCT_OUT)/system/bin
+LOCAL_MULTILIB := both
 LOCAL_MODULE_HOST_OS := $(aidl_module_host_os)
 LOCAL_CFLAGS := $(aidl_cflags)
 LOCAL_C_INCLUDES := external/gtest/include
@@ -86,10 +98,116 @@ LOCAL_SRC_FILES := main_cpp.cpp
 LOCAL_STATIC_LIBRARIES := libaidl-common $(aidl_static_libraries)
 include $(BUILD_HOST_EXECUTABLE)
 
+include $(CLEAR_VARS)
+LOCAL_MODULE := libaidl-common
+aidl_cflags := -Wall -Wextra -Werror
+
+aidl_static_libraries := \
+	libbase \
+    libcutils 
+
+aidl_target_static_libraries := \
+    libutils \
+    libziparchive \
+    liblog \
+    libm \
+    libc \
+    libz \
+    libc++_static
+    
+aidl_cppflags := \
+	-std=gnu++1y \
+	-Wno-missing-field-initializers \
+	-fno-exceptions -fno-rtti -Os \
+
+aidl_c_includes := \
+        $(LOCAL_PATH)/include \
+        system/core/base/include \
+        system/core/libutils \
+        system/core/liblog \
+        system/core/libcutils \
+        system/core/include/cutils \
+        external/expat \
+        external/zlib \
+        external/libcxx/include \
+        system/core/libziparchive \
+        frameworks/base/libs/androidfw \
+        frameworks/base/include/androidfw
+        
+LOCAL_C_INCLUDES := external/gtest/include
+
+LOCAL_CLANG_CFLAGS := $(aidl_cflags)
+# Tragically, the code is riddled with unused parameters.
+LOCAL_CLANG_CFLAGS += -Wno-unused-parameter
+# yacc dumps a lot of code *just in case*.
+LOCAL_CLANG_CFLAGS += -Wno-unused-function
+LOCAL_CLANG_CFLAGS += -Wno-unneeded-internal-declaration
+# yacc is a tool from a more civilized age.
+LOCAL_CLANG_CFLAGS += -Wno-deprecated-register
+# yacc also has a habit of using char* over const char*.
+LOCAL_CLANG_CFLAGS += -Wno-writable-strings
+LOCAL_STATIC_LIBRARIES := $(aidl_static_libraries) $(aidl_target_static_libraries) 
+
+LOCAL_SRC_FILES := \
+    aidl.cpp \
+    aidl_language.cpp \
+    aidl_language_l.ll \
+    aidl_language_y.yy \
+    ast_cpp.cpp \
+    ast_java.cpp \
+    code_writer.cpp \
+    generate_cpp.cpp \
+    generate_java.cpp \
+    generate_java_binder.cpp \
+    import_resolver.cpp \
+    line_reader.cpp \
+    io_delegate.cpp \
+    options.cpp \
+    type_cpp.cpp \
+    type_java.cpp \
+    type_namespace.cpp \
+
+include $(BUILD_STATIC_LIBRARY)
+
+
+# aidl executable
+include $(CLEAR_VARS)
+LOCAL_MODULE := aidl
+
+LOCAL_CPPFLAGS := $(aidl_cppflags)
+LOCAL_CFLAGS := $(aidl_cflags)
+LOCAL_C_INCLUDES := $(aidl_c_includes) external/gtest/include
+LOCAL_SRC_FILES := main_java.cpp
+LOCAL_STATIC_LIBRARIES := libaidl-common  $(aidl_static_libraries) $(aidl_target_static_libraries) 
+LOCAL_MODULE_CLASS := EXECUTABLES
+LOCAL_LDLIBS := -lc -lgcc -ldl -lz -lm
+ 
+LOCAL_LDFLAGS += -static
+LOCAL_FORCE_STATIC_EXECUTABLE := true
+LOCAL_PACK_MODULE_RELOCATIONS := false
+include $(BUILD_EXECUTABLE)
+
+# aidl-cpp executable
+include $(CLEAR_VARS)
+LOCAL_MODULE := aidl-cpp
+
+LOCAL_CPPFLAGS := $(aidl_cppflags)
+LOCAL_CFLAGS := $(aidl_cflags)
+LOCAL_C_INCLUDES := $(aidl_c_includes) external/gtest/include
+LOCAL_SRC_FILES := main_cpp.cpp
+LOCAL_STATIC_LIBRARIES := libaidl-common  $(aidl_static_libraries) $(aidl_target_static_libraries) 
+LOCAL_MODULE_CLASS := EXECUTABLES
+LOCAL_LDLIBS := -lc -lgcc -ldl -lz -lm
+ 
+LOCAL_LDFLAGS += -static
+LOCAL_FORCE_STATIC_EXECUTABLE := true
+LOCAL_PACK_MODULE_RELOCATIONS := false
+include $(BUILD_EXECUTABLE)
+
 # Unit tests
 include $(CLEAR_VARS)
 LOCAL_MODULE := aidl_unittests
-LOCAL_MODULE_HOST_OS := darwin linux
+LOCAL_MODULE_HOST_OS :=  linux
 
 LOCAL_CFLAGS := $(aidl_cflags) -g -DUNIT_TEST
 # Tragically, the code is riddled with unused parameters.
@@ -176,9 +294,6 @@ LOCAL_CFLAGS := $(aidl_integration_test_cflags)
 include $(BUILD_EXECUTABLE)
 
 
-# aidl on its own doesn't need the framework, but testing native/java
-# compatibility introduces java dependencies.
-ifndef BRILLO
 
 include $(CLEAR_VARS)
 LOCAL_PACKAGE_NAME := aidl_test_services
@@ -198,4 +313,4 @@ LOCAL_AIDL_INCLUDES := \
     frameworks/native/aidl/binder
 include $(BUILD_PACKAGE)
 
-endif  # not defined BRILLO
+
